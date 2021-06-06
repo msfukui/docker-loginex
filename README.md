@@ -53,3 +53,7 @@ Flags:
 * go-homedir はもう要らない | text.Baldanders.info
 
     https://text.baldanders.info/golang/no-need-go-homedir/
+
+## License
+
+[MIT License](https://opensource.org/licenses/MIT).
