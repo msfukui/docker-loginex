@@ -38,6 +38,10 @@ Flags:
 
     https://github.com/docker/cli/issues/1534
 
+* cli/login.go at master - docker/cli
+
+    https://github.com/docker/cli/blob/master/cli/command/registry/login.go
+
 * src/cmd/go/internal/auth/netrc.go - The Go Programming Language
 
     https://golang.org/src/cmd/go/internal/auth/netrc.go
