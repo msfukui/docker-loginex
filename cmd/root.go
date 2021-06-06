@@ -43,7 +43,6 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -65,17 +64,24 @@ func runLoginex(opts loginOptions) error {
 		return err
 	}
 
-	in := "Hello, docker-loginex"
+	var cmd string
+	if login.username == "" {
+		cmd = fmt.Sprintf("docker login %v", login.server)
+	} else if login.password == "" {
+		cmd = fmt.Sprintf("docker login --username %v %v", login.username, login.server)
+	} else {
+		cmd = fmt.Sprintf("docker login --password-stdin --username %v %v", login.username, login.server)
+	}
+	var in = login.password
 	var buf bytes.Buffer
 
-	if err := run("docker version", strings.NewReader(in), &buf); err != nil {
+	fmt.Printf("Run: %v\n", cmd)
+
+	if err := run(cmd, strings.NewReader(in), &buf); err != nil {
 		return err
 	}
 
-	fmt.Println("Hello, docker-loginex")
-	fmt.Printf("  docker version: [%v]", buf.String())
-	fmt.Printf("  loginOptions: %v\n", opts)
-	fmt.Printf("  loginInfo: %v\n", login)
+	fmt.Printf(buf.String())
 
 	return nil
 }
@@ -98,6 +104,27 @@ func verifyloginOptions(opts loginOptions) error {
 }
 
 func setloginInfo(opts loginOptions, info *loginInfo) error {
+	if opts.serverAddress != "" {
+		info.server = opts.serverAddress
+		readNetrc()
+		for _, v := range netrc {
+			if v.machine == info.server {
+				info.username = v.login
+				info.password = v.password
+				break
+			}
+		}
+	}
+
+	if opts.username != "" {
+		info.username = opts.username
+		info.password = ""
+	}
+
+	if opts.password != "" {
+		info.password = opts.password
+	}
+
 	if opts.passwordStdin {
 		contents, err := io.ReadAll(os.Stdin)
 		if err != nil {
