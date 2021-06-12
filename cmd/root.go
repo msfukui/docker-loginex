@@ -113,8 +113,12 @@ func verifyloginOptions(opts loginOptions) error {
 }
 
 func setloginInfo(opts loginOptions, info *loginInfo) error {
+	netrcOnce.Do(readNetrc)
+	if netrcErr != nil {
+		return netrcErr
+	}
+
 	info.server = opts.serverAddress
-	readNetrc()
 	for _, v := range netrc {
 		if v.machine == info.server {
 			info.username = v.login
