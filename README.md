@@ -57,10 +57,18 @@ Flags:
 
     https://songmu.jp/riji/entry/2017-10-10-go-tool-version.html
 
+* Go で書いた CLI ツールのリリースは GoReleaser と GitHub Actions で個人的には決まり
+
+    https://tellme.tokyo/post/2020/02/04/release-go-cli-tool/
+
+* GoReleaser
+
+    https://goreleaser.com/
+
 ## License
 
 [MIT License](https://opensource.org/licenses/MIT).
 
-However The process of retrieving data from .netrc was borrowed from `src/cmd/go/internal/auth/netrc.go`.
+However, the process of retrieving data from .netrc was borrowed from `src/cmd/go/internal/auth/netrc.go`.
 
 The license for this code part belongs to the BSD license of golang itself.
