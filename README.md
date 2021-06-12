@@ -12,8 +12,11 @@ See https://github.com/docker/cli/issues/1534 for the Docker CLI plugins.
 
 ```
 $ mkdir -p ~/.docker/cli-plugins
-$ curl --output ~/.docker/cli-plugins/docker-loginex [Release URLs]
+$ curl -OL [Release URLs]
+$ gzip -dc [Release file] | tar -xvf -
+$ mv docker-loginex ~/.docker/cli-plugins/docker-loginex
 $ chmod +x ~/.docker/cli-plugins/docker-loginex
+$ rm README.md [Release file]
 $ docker loginex --help
 A Docker CLI plugins for slightly extending `docker login` command.
 Log in to a Docker registry or cloud backend.
@@ -21,10 +24,13 @@ If no server is specified, the default is defined by the daemon.
 See also help for `docker login`.
 
 Usage:
-  docker loginex [SERVER] [flags]
+  docker-loginex [SERVER] [flags]
 
 Flags:
-  -h, --help   help for docker
+  -h, --help      help for docker-loginex
+  -v, --version   version for docker-loginex
+$ docker loginex --version
+docker-loginex version: 0.0.1 (rev: 57b3b3f)
 ```
 
 ## Reference
