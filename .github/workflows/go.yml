@@ -1,0 +1,32 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+    paths_ignore:
+      - README.md
+      - .gitignore
+  pull_request:
+    branches: [ main ]
+    paths_ignore:
+      - README.md
+      - .gitignore
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16
+
+    - name: Build
+      run: go build
+
+    - name: Test
+      run: go test -v ./...
