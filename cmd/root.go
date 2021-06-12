@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 	"io"
@@ -10,6 +11,22 @@ import (
 	"runtime"
 	"strings"
 )
+
+type dockerCliPluginMetadata struct {
+	SchemaVersion    string
+	Vendor           string
+	Version          string
+	ShortDescription string
+	URL              string
+}
+
+var metadata dockerCliPluginMetadata = dockerCliPluginMetadata{
+	SchemaVersion:    "0.1.0",
+	Vendor:           "msfukui",
+	Version:          "unreleased",
+	ShortDescription: "Slightly extending `docker login` command",
+	URL:              "https://github.com/msfukui/docker-loginex",
+}
 
 type loginOptions struct {
 	serverAddress string
@@ -32,9 +49,17 @@ var rootCmd = &cobra.Command{
 		"See also help for `docker login`.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			if args[0] == "loginex" {
-				// Judged that it was executed from the docker subcommand.
-				options.serverAddress = args[1]
+			if args[0] == "docker-cli-plugin-metadata" {
+				// Return metadata as a requirement of Docker CLI pligins.
+				v := getDockerCliPluginMetadata()
+				j, _ := json.Marshal(v)
+				fmt.Println(string(j))
+				return nil
+			} else if args[0] == "loginex" {
+				// Judged to be called as a subcommand of docker/cli.
+				if len(args) > 1 {
+					options.serverAddress = args[1]
+				}
 			} else {
 				options.serverAddress = args[0]
 			}
@@ -50,6 +75,10 @@ func Execute() {
 }
 
 func init() {
+}
+
+func getDockerCliPluginMetadata() dockerCliPluginMetadata {
+	return metadata
 }
 
 func runLoginex(opts loginOptions) error {
