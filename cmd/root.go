@@ -43,7 +43,7 @@ type loginInfo struct {
 }
 
 var rootCmd = &cobra.Command{
-	Use:     "docker loginex [SERVER]",
+	Use:     "docker-loginex [SERVER]",
 	Version: version,
 	Short:   "A Docker CLI plugins for slightly extending `docker login` command.",
 	Long: "A Docker CLI plugins for slightly extending `docker login` command.\n" +
