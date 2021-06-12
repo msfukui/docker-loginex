@@ -16,6 +16,7 @@ type dockerCliPluginMetadata struct {
 	SchemaVersion    string
 	Vendor           string
 	Version          string
+	Revision         string
 	ShortDescription string
 	URL              string
 }
@@ -23,7 +24,8 @@ type dockerCliPluginMetadata struct {
 var metadata dockerCliPluginMetadata = dockerCliPluginMetadata{
 	SchemaVersion:    "0.1.0",
 	Vendor:           "msfukui",
-	Version:          "unreleased",
+	Version:          version,
+	Revision:         revision,
 	ShortDescription: "Slightly extending `docker login` command",
 	URL:              "https://github.com/msfukui/docker-loginex",
 }
@@ -41,8 +43,9 @@ type loginInfo struct {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "docker loginex [SERVER]",
-	Short: "A Docker CLI plugins for slightly extending `docker login` command.",
+	Use:     "docker loginex [SERVER]",
+	Version: version,
+	Short:   "A Docker CLI plugins for slightly extending `docker login` command.",
 	Long: "A Docker CLI plugins for slightly extending `docker login` command.\n" +
 		"Log in to a Docker registry or cloud backend.\n" +
 		"If no server is specified, the default is defined by the daemon.\n" +
@@ -51,8 +54,7 @@ var rootCmd = &cobra.Command{
 		if len(args) > 0 {
 			if args[0] == "docker-cli-plugin-metadata" {
 				// Return metadata as a requirement of Docker CLI pligins.
-				v := getDockerCliPluginMetadata()
-				j, _ := json.Marshal(v)
+				j, _ := json.Marshal(getDockerCliPluginMetadata())
 				fmt.Println(string(j))
 				return nil
 			} else if args[0] == "loginex" {
@@ -75,6 +77,8 @@ func Execute() {
 }
 
 func init() {
+	v := "docker-loginex version: " + version + " (rev: " + revision + ")\n"
+	rootCmd.SetVersionTemplate(v)
 }
 
 func getDockerCliPluginMetadata() dockerCliPluginMetadata {
