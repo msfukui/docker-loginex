@@ -56,3 +56,7 @@ Flags:
 ## License
 
 [MIT License](https://opensource.org/licenses/MIT).
+
+However The process of retrieving data from .netrc was borrowed from `src/cmd/go/internal/auth/netrc.go`.
+
+The license for this code part belongs to the BSD license of golang itself.
