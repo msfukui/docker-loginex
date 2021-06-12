@@ -53,6 +53,10 @@ Flags:
 
     https://text.baldanders.info/golang/no-need-go-homedir/
 
+* Goツールのリリースにおけるバージョニングについて
+
+    https://songmu.jp/riji/entry/2017-10-10-go-tool-version.html
+
 ## License
 
 [MIT License](https://opensource.org/licenses/MIT).
