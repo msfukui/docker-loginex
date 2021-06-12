@@ -128,9 +128,8 @@ func setloginInfo(opts loginOptions, info *loginInfo) error {
 
 func runDockerLogin(login loginInfo) (string, error) {
 	var buf bytes.Buffer
-	var cmd *exec.Cmd
 
-	cmd = exec.Command("docker", "login", "--password-stdin", "--username", login.username, login.server)
+	cmd := exec.Command("docker", "login", "--password-stdin", "--username", login.username, login.server) // #nosec G204
 
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = &buf
