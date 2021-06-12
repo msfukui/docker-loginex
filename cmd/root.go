@@ -12,9 +12,6 @@ import (
 )
 
 type loginOptions struct {
-	passwordStdin bool
-	password      string
-	username      string
 	serverAddress string
 }
 
@@ -27,7 +24,7 @@ type loginInfo struct {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "docker loginex [OPTIONS] [SERVER]",
+	Use:   "docker loginex [SERVER]",
 	Short: "A Docker CLI plugins for slightly extending `docker login` command.",
 	Long: "A Docker CLI plugins for slightly extending `docker login` command.\n" +
 		"Log in to a Docker registry or cloud backend.\n" +
@@ -35,7 +32,12 @@ var rootCmd = &cobra.Command{
 		"See also help for `docker login`.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			options.serverAddress = args[0]
+			if args[0] == "loginex" {
+				// Judged that it was executed from the docker subcommand.
+				options.serverAddress = args[1]
+			} else {
+				options.serverAddress = args[0]
+			}
 		}
 		return runLoginex(options)
 	},
@@ -48,9 +50,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&options.passwordStdin, "password-stdin", "", false, "Take the password from stdin")
-	rootCmd.PersistentFlags().StringVarP(&options.password, "password", "p", "", "password")
-	rootCmd.PersistentFlags().StringVarP(&options.username, "username", "u", "", "username")
 }
 
 func runLoginex(opts loginOptions) error {
@@ -65,17 +64,9 @@ func runLoginex(opts loginOptions) error {
 	}
 
 	var cmd string
-	if login.username == "" {
-		cmd = fmt.Sprintf("docker login %v", login.server)
-	} else if login.password == "" {
-		cmd = fmt.Sprintf("docker login --username %v %v", login.username, login.server)
-	} else {
-		cmd = fmt.Sprintf("docker login --password-stdin --username %v %v", login.username, login.server)
-	}
+	cmd = fmt.Sprintf("docker login --password-stdin --username %v %v", login.username, login.server)
 	var in = login.password
 	var buf bytes.Buffer
-
-	fmt.Printf("Run: %v\n", cmd)
 
 	if err := run(cmd, strings.NewReader(in), &buf); err != nil {
 		return err
@@ -87,55 +78,25 @@ func runLoginex(opts loginOptions) error {
 }
 
 func verifyloginOptions(opts loginOptions) error {
-	if opts.password != "" {
-		fmt.Println("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-		if opts.passwordStdin {
-			return fmt.Errorf("--password and --password-stdin are mutually exclusive")
-		}
-	}
-
-	if opts.passwordStdin {
-		if opts.username == "" {
-			return fmt.Errorf("Must provide --username with --password-stdin")
-		}
+	if opts.serverAddress == "" {
+		return fmt.Errorf("No server is specified in the argument.")
 	}
 
 	return nil
 }
 
 func setloginInfo(opts loginOptions, info *loginInfo) error {
-	if opts.serverAddress != "" {
-		info.server = opts.serverAddress
-		readNetrc()
-		for _, v := range netrc {
-			if v.machine == info.server {
-				info.username = v.login
-				info.password = v.password
-				break
-			}
+	info.server = opts.serverAddress
+	readNetrc()
+	for _, v := range netrc {
+		if v.machine == info.server {
+			info.username = v.login
+			info.password = v.password
+			return nil
 		}
 	}
 
-	if opts.username != "" {
-		info.username = opts.username
-		info.password = ""
-	}
-
-	if opts.password != "" {
-		info.password = opts.password
-	}
-
-	if opts.passwordStdin {
-		contents, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return err
-		}
-
-		info.password = strings.TrimSuffix(string(contents), "\n")
-		info.password = strings.TrimSuffix(info.password, "\r")
-	}
-
-	return nil
+	return fmt.Errorf("No etnry in .netrc for the specified server %v.", opts.serverAddress)
 }
 
 func run(command string, r io.Reader, w io.Writer) error {
