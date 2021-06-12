@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 )
 
@@ -96,23 +94,19 @@ func runLoginex(opts loginOptions) error {
 		return err
 	}
 
-	var cmd string
-	cmd = fmt.Sprintf("docker login --password-stdin --username %v %v", login.username, login.server)
-	var in = login.password
-	var buf bytes.Buffer
-
-	if err := run(cmd, strings.NewReader(in), &buf); err != nil {
+	out, err := runDockerLogin(login)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf(buf.String())
+	fmt.Print(out)
 
 	return nil
 }
 
 func verifyloginOptions(opts loginOptions) error {
 	if opts.serverAddress == "" {
-		return fmt.Errorf("No server is specified in the argument.")
+		return fmt.Errorf("no server is specified in the argument")
 	}
 
 	return nil
@@ -129,18 +123,21 @@ func setloginInfo(opts loginOptions, info *loginInfo) error {
 		}
 	}
 
-	return fmt.Errorf("No etnry in .netrc for the specified server %v.", opts.serverAddress)
+	return fmt.Errorf("no etnry in .netrc for the specified server %v", opts.serverAddress)
 }
 
-func run(command string, r io.Reader, w io.Writer) error {
+func runDockerLogin(login loginInfo) (string, error) {
+	var buf bytes.Buffer
 	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", command)
-	} else {
-		cmd = exec.Command("sh", "-c", command)
-	}
+
+	cmd = exec.Command("docker", "login", "--password-stdin", "--username", login.username, login.server)
+
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = w
-	cmd.Stdin = r
-	return cmd.Run()
+	cmd.Stdout = &buf
+	cmd.Stdin = strings.NewReader(login.password)
+
+	if err := cmd.Run(); err != nil {
+		return buf.String(), err
+	}
+	return buf.String(), nil
 }
