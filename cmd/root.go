@@ -2,19 +2,33 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 )
 
+type dockerCliPluginMetadata struct {
+	SchemaVersion    string
+	Vendor           string
+	Version          string
+	Revision         string
+	ShortDescription string
+	URL              string
+}
+
+var metadata dockerCliPluginMetadata = dockerCliPluginMetadata{
+	SchemaVersion:    "0.1.0",
+	Vendor:           "msfukui",
+	Version:          version,
+	Revision:         revision,
+	ShortDescription: "Slightly extending `docker login` command",
+	URL:              "https://github.com/msfukui/docker-loginex",
+}
+
 type loginOptions struct {
-	passwordStdin bool
-	password      string
-	username      string
 	serverAddress string
 }
 
@@ -27,15 +41,28 @@ type loginInfo struct {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "docker loginex [OPTIONS] [SERVER]",
-	Short: "A Docker CLI plugins for slightly extending `docker login` command.",
+	Use:     "docker-loginex [SERVER]",
+	Version: version,
+	Short:   "A Docker CLI plugins for slightly extending `docker login` command.",
 	Long: "A Docker CLI plugins for slightly extending `docker login` command.\n" +
 		"Log in to a Docker registry or cloud backend.\n" +
 		"If no server is specified, the default is defined by the daemon.\n" +
 		"See also help for `docker login`.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			options.serverAddress = args[0]
+			if args[0] == "docker-cli-plugin-metadata" {
+				// Return metadata as a requirement of Docker CLI pligins.
+				j, _ := json.Marshal(getDockerCliPluginMetadata())
+				fmt.Println(string(j))
+				return nil
+			} else if args[0] == "loginex" {
+				// Judged to be called as a subcommand of docker/cli.
+				if len(args) > 1 {
+					options.serverAddress = args[1]
+				}
+			} else {
+				options.serverAddress = args[0]
+			}
 		}
 		return runLoginex(options)
 	},
@@ -48,9 +75,12 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&options.passwordStdin, "password-stdin", "", false, "Take the password from stdin")
-	rootCmd.PersistentFlags().StringVarP(&options.password, "password", "p", "", "password")
-	rootCmd.PersistentFlags().StringVarP(&options.username, "username", "u", "", "username")
+	v := "docker-loginex version: " + version + " (rev: " + revision + ")\n"
+	rootCmd.SetVersionTemplate(v)
+}
+
+func getDockerCliPluginMetadata() dockerCliPluginMetadata {
+	return metadata
 }
 
 func runLoginex(opts loginOptions) error {
@@ -64,89 +94,53 @@ func runLoginex(opts loginOptions) error {
 		return err
 	}
 
-	var cmd string
-	if login.username == "" {
-		cmd = fmt.Sprintf("docker login %v", login.server)
-	} else if login.password == "" {
-		cmd = fmt.Sprintf("docker login --username %v %v", login.username, login.server)
-	} else {
-		cmd = fmt.Sprintf("docker login --password-stdin --username %v %v", login.username, login.server)
-	}
-	var in = login.password
-	var buf bytes.Buffer
-
-	fmt.Printf("Run: %v\n", cmd)
-
-	if err := run(cmd, strings.NewReader(in), &buf); err != nil {
+	out, err := runDockerLogin(login)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf(buf.String())
+	fmt.Print(out)
 
 	return nil
 }
 
 func verifyloginOptions(opts loginOptions) error {
-	if opts.password != "" {
-		fmt.Println("WARNING! Using --password via the CLI is insecure. Use --password-stdin.")
-		if opts.passwordStdin {
-			return fmt.Errorf("--password and --password-stdin are mutually exclusive")
-		}
-	}
-
-	if opts.passwordStdin {
-		if opts.username == "" {
-			return fmt.Errorf("Must provide --username with --password-stdin")
-		}
+	if opts.serverAddress == "" {
+		return fmt.Errorf("no server is specified in the argument")
 	}
 
 	return nil
 }
 
 func setloginInfo(opts loginOptions, info *loginInfo) error {
-	if opts.serverAddress != "" {
-		info.server = opts.serverAddress
-		readNetrc()
-		for _, v := range netrc {
-			if v.machine == info.server {
-				info.username = v.login
-				info.password = v.password
-				break
-			}
+	netrcOnce.Do(readNetrc)
+	if netrcErr != nil {
+		return netrcErr
+	}
+
+	info.server = opts.serverAddress
+	for _, v := range netrc {
+		if v.machine == info.server {
+			info.username = v.login
+			info.password = v.password
+			return nil
 		}
 	}
 
-	if opts.username != "" {
-		info.username = opts.username
-		info.password = ""
-	}
-
-	if opts.password != "" {
-		info.password = opts.password
-	}
-
-	if opts.passwordStdin {
-		contents, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return err
-		}
-
-		info.password = strings.TrimSuffix(string(contents), "\n")
-		info.password = strings.TrimSuffix(info.password, "\r")
-	}
-
-	return nil
+	return fmt.Errorf("no etnry in .netrc for the specified server %v", opts.serverAddress)
 }
 
-func run(command string, r io.Reader, w io.Writer) error {
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", command)
-	} else {
-		cmd = exec.Command("sh", "-c", command)
-	}
+func runDockerLogin(login loginInfo) (string, error) {
+	var buf bytes.Buffer
+
+	cmd := exec.Command("docker", "login", "--password-stdin", "--username", login.username, login.server) // #nosec G204
+
 	cmd.Stderr = os.Stderr
-	cmd.Stdout = w
-	cmd.Stdin = r
-	return cmd.Run()
+	cmd.Stdout = &buf
+	cmd.Stdin = strings.NewReader(login.password)
+
+	if err := cmd.Run(); err != nil {
+		return buf.String(), err
+	}
+	return buf.String(), nil
 }
